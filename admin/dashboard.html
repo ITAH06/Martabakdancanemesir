@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Admin | Martabak & Cane Mesir</title>
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="container">
+      <div class="dash-title">
+        <h1>Dashboard Admin</h1>
+        <small>Martabak & Cane Mesir • Sigli</small>
+      </div>
+      <button class="btn btn-ghost btn-sm" id="logoutBtn" type="button">Logout</button>
+    </div>
+  </header>
+
+  <main class="dash container">
+    <div class="stats">
+      <div class="stat"><span>Total produk</span><strong id="statTotal">0</strong></div>
+      <div class="stat"><span>Tersedia</span><strong id="statAvailable">0</strong></div>
+      <div class="stat"><span>Stok habis / nonaktif</span><strong id="statOff">0</strong></div>
+    </div>
+
+    <section class="panel">
+      <h2 id="formTitle">Tambah produk</h2>
+      <form id="productForm">
+        <input type="hidden" id="productId">
+        <input type="hidden" id="imageUrlHidden">
+        <div class="form-grid">
+          <div>
+            <label for="nama">Nama produk</label>
+            <input id="nama" required maxlength="100" placeholder="Contoh: Martabak Mesir">
+          </div>
+          <div>
+            <label for="kategori">Kategori</label>
+            <input id="kategori" required maxlength="50" value="Makanan" placeholder="Makanan / Minuman">
+          </div>
+          <div>
+            <label for="harga">Harga (Rp)</label>
+            <input id="harga" type="number" min="0" step="1000" required placeholder="18000">
+          </div>
+          <div>
+            <label for="stok">Stok</label>
+            <input id="stok" type="number" min="0" step="1" required value="0">
+          </div>
+          <div class="lebar">
+            <label for="deskripsi">Deskripsi</label>
+            <textarea id="deskripsi" maxlength="300" placeholder="Deskripsi singkat produk"></textarea>
+          </div>
+          <div class="lebar">
+            <label for="foto">Foto produk (JPG/PNG/WebP, maks. 5 MB)</label>
+            <input id="foto" type="file" accept="image/jpeg,image/png,image/webp">
+          </div>
+          <div class="lebar">
+            <label><input id="tersedia" type="checkbox" checked> Tampilkan di katalog pembeli</label>
+          </div>
+        </div>
+        <button class="btn btn-dark full" id="simpanBtn" type="submit">Simpan Produk</button>
+        <button class="btn btn-ghost full" id="batalBtn" type="button" hidden>Batal Edit</button>
+        <div class="pesan" id="pesan"></div>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>Daftar produk</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Foto</th><th>Nama</th><th>Kategori</th><th>Harga</th><th>Stok</th><th>Status</th><th>Aksi</th></tr>
+          </thead>
+          <tbody id="productRows"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="dashboard.js"></script>
+</body>
+</html>

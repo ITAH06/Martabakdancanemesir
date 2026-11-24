@@ -195,12 +195,14 @@
   color: var(--brown);
   font-size: 22px;
 }
-.cart-checkout { width: 100%; }
-.cart-checkout:disabled {
+.cart-checkout { width: 100%; text-decoration: none; }
+.cart-checkout:disabled,
+.cart-checkout[aria-disabled="true"] {
   opacity: .5;
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
+  pointer-events: none;
 }
 
 @media (max-width: 760px) {

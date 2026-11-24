@@ -316,11 +316,12 @@
     <div class="cart-items" id="cartItems"></div>
     <div class="cart-footer">
       <div class="cart-total"><span>Total</span><strong id="cartTotal">Rp0</strong></div>
-      <button class="btn cart-checkout" id="cartCheckout" type="button" disabled>Checkout via WhatsApp ↗</button>
+      <a class="btn cart-checkout" id="cartCheckout" role="button" aria-disabled="true" tabindex="-1">Checkout via WhatsApp ↗</a>
     </div>
   </aside>
 
-  <script src="js/cart.js"></script>
+  <script type="module" src="js/catalog.js"></script>
+  <script type="module" src="js/cart.js"></script>
   <script>
     const menuToggle = document.getElementById('menuToggle');
     const navLinks = document.getElementById('navLinks');
