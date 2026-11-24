@@ -67,6 +67,7 @@
   background: rgba(41, 25, 16, .45);
   backdrop-filter: blur(2px);
 }
+/* Panel disembunyikan di luar layar sampai tombol keranjang ditekan. */
 .cart-drawer {
   position: fixed;
   top: 0;
@@ -78,7 +79,17 @@
   flex-direction: column;
   background: var(--cream);
   box-shadow: -18px 0 45px rgba(60, 36, 24, .18);
+  transform: translateX(102%);
+  visibility: hidden;
+  pointer-events: none;
+  transition: transform .28s ease, visibility .28s;
 }
+.cart-drawer.is-open {
+  transform: translateX(0);
+  visibility: visible;
+  pointer-events: auto;
+}
+body.cart-open { overflow: hidden; }
 .cart-header {
   display: flex;
   align-items: center;
