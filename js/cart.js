@@ -1,18 +1,16 @@
-/* ============================================================
-   Keranjang + checkout WhatsApp
-   - Data produk dibaca otomatis dari kartu yang sudah ada,
-     sehingga tidak perlu menduplikasi nama/harga/gambar.
-   - Nomor toko: 089652518067 (6289652518067 untuk wa.me)
-   ============================================================ */
+/* Keranjang + checkout WhatsApp.
+   Harga diambil dari DOM (yang diisi dari DB bila CATALOG_FROM_DB = true).
+   Saat checkout, harga_divalidasi ulang lewat RPC Postgres bila tersedia. */
+import { supabase } from './supabase-client.js';
+import { CATALOG_FROM_DB, WHATSAPP_NUMBER } from './config.js';
+
 (function () {
   'use strict';
 
-  var WHATSAPP_NUMBER = '6289652518067';
   var STORAGE_KEY = 'martabak-cane-mesir-cart-v1';
-
-  function rupiah(value) {
+  var rupiah = function (value) {
     return 'Rp' + Number(value).toLocaleString('id-ID');
-  }
+  };
 
   function textOf(root, selector) {
     var el = root ? root.querySelector(selector) : null;
@@ -46,27 +44,24 @@
   function persist() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(cart));
-    } catch (e) {
-      /* Penyimpanan bisa diblokir; keranjang tetap berjalan di memori. */
-    }
+    } catch (e) {}
   }
 
-  var products = Array.prototype.map.call(
-    document.querySelectorAll('.product-card'),
-    function (card) {
+  function readProducts() {
+    return Array.prototype.map.call(document.querySelectorAll('.product-card'), function (card) {
       var name = textOf(card, 'h3');
-      var priceText = textOf(card, '.price');
       var image = card.querySelector('.product-image');
       return {
         id: name.toLowerCase().replace(/\s+/g, '-'),
+        dbId: card.getAttribute('data-product-id') || '',
         name: name,
-        price: Number(priceText.replace(/\D/g, '')),
+        price: Number(textOf(card, '.price').replace(/\D/g, '')),
         image: image ? image.getAttribute('src') : ''
       };
-    }
-  ).filter(function (p) {
-    return p.name && p.price > 0;
-  });
+    }).filter(function (p) { return p.name && p.price > 0; });
+  }
+
+  var products = readProducts();
 
   function productById(id) {
     for (var i = 0; i < products.length; i++) {
@@ -78,9 +73,7 @@
   function entries() {
     return Object.keys(cart).map(function (id) {
       return { product: productById(id), qty: Number(cart[id]) };
-    }).filter(function (item) {
-      return item.product && item.qty > 0;
-    });
+    }).filter(function (item) { return item.product && item.qty > 0; });
   }
 
   function totals() {
@@ -113,10 +106,9 @@
   function render() {
     var list = entries();
     var t = totals();
-
     els.items.innerHTML = '';
 
-    if (list.length === 0) {
+    if (!list.length) {
       var empty = document.createElement('p');
       empty.className = 'cart-empty';
       empty.textContent = 'Keranjang masih kosong. Tambahkan menu favoritmu, ya!';
@@ -137,21 +129,17 @@
 
         var info = document.createElement('div');
         info.className = 'cart-item-info';
-
         var name = document.createElement('strong');
         name.textContent = p.name;
-
         var price = document.createElement('span');
         price.className = 'cart-item-price';
         price.textContent = rupiah(p.price) + ' / porsi';
 
         var qty = document.createElement('div');
         qty.className = 'cart-qty';
-
         var value = document.createElement('span');
         value.className = 'qty-value';
         value.textContent = String(item.qty);
-
         qty.appendChild(makeButton('\u2212', 'qty-btn', 'dec', p.id));
         qty.appendChild(value);
         qty.appendChild(makeButton('+', 'qty-btn', 'inc', p.id));
@@ -168,35 +156,46 @@
     els.total.textContent = rupiah(t.amount);
     els.badge.textContent = String(t.count);
     els.badge.hidden = t.count === 0;
-    els.checkout.disabled = list.length === 0;
+    if (!list.length) {
+      els.checkout.setAttribute('aria-disabled', 'true');
+      els.checkout.setAttribute('tabindex', '-1');
+    } else {
+      els.checkout.setAttribute('aria-disabled', 'false');
+      els.checkout.setAttribute('tabindex', '0');
+    }
+
+    /* Validasi harga lebih awal. Setelah sukses, href diisi dan
+       tombol menjadi tautan WhatsApp alami (tidak diblokir popup blocker). */
+    validateCheckout();
   }
 
   function change(id, action) {
     if (!productById(id)) return;
     var current = Number(cart[id]) || 0;
-
     if (action === 'inc') cart[id] = current + 1;
     else if (action === 'dec') cart[id] = current - 1;
     else if (action === 'remove') delete cart[id];
-
     if (cart[id] !== undefined && cart[id] <= 0) delete cart[id];
-
     persist();
     render();
   }
 
-  Array.prototype.forEach.call(document.querySelectorAll('[data-add]'), function (btn) {
-    btn.addEventListener('click', function () {
-      var card = btn.closest('.product-card');
-      var name = textOf(card, 'h3');
-      var id = name.toLowerCase().replace(/\s+/g, '-');
-      if (!productById(id)) return;
+  /* Event delegation: kartu bisa diganti katalog DB kapan saja,
+     jadi listener tidak dipasang per tombol. */
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-add]');
+    if (!btn) return;
+    var card = btn.closest('.product-card');
+    if (!card) return;
 
-      cart[id] = (Number(cart[id]) || 0) + 1;
-      persist();
-      render();
-      setOpen(true);
-    });
+    products = readProducts();
+    var name = textOf(card, 'h3');
+    var id = name.toLowerCase().replace(/\s+/g, '-');
+    if (!productById(id)) return;
+    cart[id] = (Number(cart[id]) || 0) + 1;
+    persist();
+    render();
+    setOpen(true);
   });
 
   els.toggle.addEventListener('click', function () {
@@ -207,39 +206,100 @@
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') setOpen(false);
   });
-
   els.items.addEventListener('click', function (e) {
     var btn = e.target.closest('[data-action]');
     if (btn) change(btn.getAttribute('data-id'), btn.getAttribute('data-action'));
   });
 
-  els.checkout.addEventListener('click', function () {
-    var list = entries();
-    if (list.length === 0) return;
+  window.addEventListener('products:updated', function () {
+    products = readProducts();
+    render();
+  });
 
-    var lines = list.map(function (item, index) {
-      var p = item.product;
-      return (index + 1) + '. ' + p.name + ' x' + item.qty +
-        ' \u2014 ' + rupiah(p.price) + ' = ' + rupiah(p.price * item.qty);
-    });
-
-    var t = totals();
-    var message = [
+  function susunPesan(lines, total) {
+    return [
       'Halo, saya ingin memesan di Martabak & Cane Mesir:',
       '',
       lines.join('\n'),
       '',
-      'Total: ' + rupiah(t.amount),
+      'Total: ' + rupiah(total),
       '',
       'Terima kasih!'
     ].join('\n');
+  }
 
-    window.open(
-      'https://wa.me/' + WHATSAPP_NUMBER + '?text=' + encodeURIComponent(message),
-      '_blank',
-      'noopener'
-    );
-  });
+  async function pesanCheckout(list) {
+    /* Saat katalog berbasis DB, harga WAJIB berasal dari database.
+       Jika RPC gagal, checkout dibatalkan — harga browser tidak dipercaya. */
+    if (CATALOG_FROM_DB && list.length && list.every(function (i) { return i.product.dbId; })) {
+      try {
+        var res = await supabase.rpc('get_checkout_summary', {
+          p_items: list.map(function (i) { return { id: i.product.dbId, qty: i.qty }; })
+        });
+        if (!res.error && res.data && res.data.length === list.length) {
+          var lines = res.data.map(function (r, i) {
+            return (i + 1) + '. ' + r.name + ' x' + r.qty +
+              ' \u2014 ' + rupiah(r.unit_price) + ' = ' + rupiah(r.line_total);
+          });
+          var total = res.data.reduce(function (s, r) { return s + Number(r.line_total); }, 0);
+          return susunPesan(lines, total);
+        }
+      } catch (e) {}
+      return null;
+    }
+
+    /* Fallback lokal hanya untuk katalog statis (CATALOG_FROM_DB = false). */
+    var localLines = list.map(function (item, i) {
+      var p = item.product;
+      return (i + 1) + '. ' + p.name + ' x' + item.qty +
+        ' \u2014 ' + rupiah(p.price) + ' = ' + rupiah(p.price * item.qty);
+    });
+    return susunPesan(localLines, totals().amount);
+  }
+
+  var checkoutCache = { key: '', pesan: '' };
+
+  function cartSignature() {
+    return JSON.stringify({
+      cart: cart,
+      ids: products.map(function (p) { return p.id + ':' + p.dbId; })
+    });
+  }
+
+  async function validateCheckout() {
+    var key = cartSignature();
+    var list = entries();
+
+    if (!list.length || checkoutCache.key !== key) {
+      els.checkout.removeAttribute('href');
+      els.checkout.title = 'Memvalidasi harga...';
+    }
+
+    if (!list.length) {
+      checkoutCache = { key: key, pesan: '' };
+      els.checkout.title = '';
+      return '';
+    }
+
+    try {
+      var pesan = await pesanCheckout(list);
+      checkoutCache = { key: cartSignature(), pesan: pesan || '' };
+      if (checkoutCache.pesan) {
+        els.checkout.href = 'https://wa.me/' + WHATSAPP_NUMBER +
+          '?text=' + encodeURIComponent(checkoutCache.pesan);
+        els.checkout.title = '';
+      } else {
+        els.checkout.removeAttribute('href');
+        els.checkout.title = 'Harga gagal divalidasi. Coba lagi.';
+      }
+      return checkoutCache.pesan;
+    } catch (e) {
+      checkoutCache = { key: key, pesan: '' };
+      els.checkout.removeAttribute('href');
+      els.checkout.title = 'Harga gagal divalidasi. Coba lagi.';
+      return '';
+    }
+  }
 
   render();
 })();

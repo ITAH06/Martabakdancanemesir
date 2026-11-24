@@ -1,0 +1,38 @@
+name: Backup Foto Produk Harian
+
+on:
+  schedule:
+    - cron: '30 2 * * *'  # 02:30 UTC = 09:30 WIB
+  workflow_dispatch:
+
+jobs:
+  storage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Unduh semua foto dari Supabase Storage
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          IMAGE_BUCKET: product-images
+          OUT_DIR: backups/photos
+        run: node scripts/backup-storage.mjs
+
+      - name: Arsipkan
+        run: |
+          mkdir -p backups
+          zip -r "photos-$(date +%F).zip" backups/photos
+          echo "PHOTO_ZIP=photos-$(date +%F).zip" >> "$GITHUB_ENV"
+
+      - name: Simpan artifact (retensi 30 hari)
+        uses: actions/upload-artifact@v4
+        with:
+          name: photos-backup-${{ github.run_id }}
+          path: ${{ env.PHOTO_ZIP }}
+          retention-days: 30
+          if-no-files-found: error

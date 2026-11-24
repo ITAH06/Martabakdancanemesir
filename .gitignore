@@ -1,0 +1,13 @@
+# Jangan pernah commit kredensial / cadangan
+.env
+.env.*
+!.env.example
+backups/
+*.sql.gz
+*.zip
+
+# Lokal
+node_modules/
+*.log
+.DS_Store
+Thumbs.db

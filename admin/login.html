@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Masuk Admin | Martabak & Cane Mesir</title>
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <div class="login-wrap">
+    <div class="login-card">
+      <div class="login-brand">
+        <span class="mark">🍽</span>
+        <span><strong>MARTABAK & CANE MESIR</strong><small>SIGLI • ACEH — ADMIN</small></span>
+      </div>
+
+      <h1>Masuk Admin</h1>
+      <p class="sub">Hanya akun dengan role admin yang dapat mengelola katalog.</p>
+
+      <form id="loginForm">
+        <label for="email">Email</label>
+        <input id="email" type="email" autocomplete="email" required placeholder="nama@gmail.com">
+
+        <label for="password">Password</label>
+        <input id="password" type="password" autocomplete="current-password" required placeholder="••••••••">
+
+        <button class="btn btn-dark full" type="submit">Masuk Dashboard</button>
+      </form>
+
+      <form id="recoveryForm" hidden>
+        <label for="newPassword">Password baru</label>
+        <input id="newPassword" type="password" autocomplete="new-password" required minlength="6">
+
+        <button class="btn btn-dark full" type="submit">Simpan Password Baru</button>
+      </form>
+
+      <button class="link-btn" id="forgotBtn" type="button">Lupa password?</button>
+      <div class="pesan" id="pesan"></div>
+      <a class="back" href="../index.html">← Kembali ke website</a>
+    </div>
+  </div>
+  <script type="module" src="login.js"></script>
+</body>
+</html>
